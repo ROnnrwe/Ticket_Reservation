@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>티켓발권 사이트</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>한국외대</title>
+
+    <style>
+        body {
+            background-color: #002D56;
+            color: #8d704f;
+        } 
+        
+        .seat {
+            width: 50px;
+            height: 50px;
+            border: 1px solid #ccc;
+            display: inline-block;
+            margin: 5px;
+            cursor: pointer; 
+        }
+        .selected {
+            background-color: #008294;
+        }
+        .sold {
+            background-color: #ff0000;
+        }
+    </style>
+</head>
+<body>
+    <h1>한국외대 글로벌캠퍼스 중앙연극동아리 연결</h1>
+    <img src="/static/hufsss.png" width="100" height="100">
+    <h1>티켓발권 사이트</h1>
+    <form id="ticketForm" method="post">
+        <label for="name">이름:</label>
+        <input type="text" id="name" name="name"><br><br>
+        <label for="student_id">학번:</label>
+        <input type="text" id="student_id" name="student_id" maxlength="9"><br><br>
+        <div id="seats">
+            <h2>좌석 선택</h2>
+            <!-- 좌석 표시 -->
+        </div>
+        <p id="selectedSeat"></p>
+        <button type="button" id="submitBtn">티켓 구매</button>
+    </form>
+    
+    <script>
+        var selectedSeat = null;
+        var soldSeats = {{ soldSeats|tojson }}; // 이미 판매된 좌석 정보를 받아옴
+
+        // 좌석 정보
+        var seats = [];
+        var rows = 10;
+        var cols = 10;
+        for (var i = 0; i < rows; i++) {
+            for (var j = 0; j < cols; j++) {
+                seats.push(String.fromCharCode(65 + i) + (j + 1));
+            }
+        }
+
+        // 좌석 선택 이벤트 처리
+        function selectSeat(seat) {
+            if (soldSeats.includes(seat) || selectedSeat === seat) { // 이미 판매된 좌석이거나 이미 선택된 좌석인 경우
+                alert('이미 선택된 좌석입니다.');
+                return;
+            }
+            
+            if (selectedSeat !== null) {
+                document.getElementById(selectedSeat).classList.remove('selected');
+            }
+            if (document.getElementById(seat).classList.contains('selected')) {
+                selectedSeat = null;
+                document.getElementById('selectedSeat').textContent = '';
+            } else {
+                selectedSeat = seat;
+                document.getElementById(seat).classList.add('selected');
+                document.getElementById('selectedSeat').textContent = '선택된 좌석: ' + seat;
+            }
+        }
+
+        // 좌석 표시
+        var seatContainer = document.getElementById('seats');
+        seats.forEach(function(seat) {
+            var seatElement = document.createElement('div');
+            seatElement.setAttribute('class', 'seat');
+            seatElement.setAttribute('id', seat);
+            seatElement.textContent = seat;
+            seatElement.addEventListener('click', function() {
+                selectSeat(seat);
+            });
+            if (soldSeats.includes(seat)) {
+                seatElement.classList.add('sold');
+            }
+            seatContainer.appendChild(seatElement);
+        });
+
+        // 티켓 구매 버튼 클릭 시 서버로 선택된 좌석 정보 전송
+        document.getElementById('submitBtn').addEventListener('click', function() {
+            var name = document.getElementById('name').value;
+            var studentId = document.getElementById('student_id').value;
+
+            if (!name || !studentId) {
+                alert('이름과 학번을 입력해주세요.');
+                return;
+            }
+
+            if (selectedSeat === null) {
+                alert('좌석을 선택해주세요.');
+                return;
+            }
+
+            fetch('/submit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'name=' + encodeURIComponent(name) + '&student_id=' + encodeURIComponent(studentId) + '&seat=' + encodeURIComponent(selectedSeat)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('티켓 구매에 실패하였습니다.');
+                }
+                return response.json();
+            })
+            .then(data => {
+                alert(data.message);
+                location.reload(); // 페이지 새로고침
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert(error.message);
+            });
+        });
+    </script>
+</body>
+</html>
+
+
